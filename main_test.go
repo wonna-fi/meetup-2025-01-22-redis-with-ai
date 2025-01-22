@@ -22,22 +22,56 @@ func TestServerStartup(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// Send PING command in RESP format
-	pingCmd := "*1\r\n$4\r\nPING\r\n"
-	_, err = conn.Write([]byte(pingCmd))
-	if err != nil {
-		t.Fatalf("Failed to send PING command: %v", err)
+	tests := []struct {
+		name     string
+		command  string
+		expected string
+	}{
+		{
+			name:     "PING without argument",
+			command:  "*1\r\n$4\r\nPING\r\n",
+			expected: "PONG",
+		},
+		{
+			name:     "PING with argument",
+			command:  "*2\r\n$4\r\nPING\r\n$5\r\nhello\r\n",
+			expected: "hello",
+		},
+		{
+			name:     "Unknown command",
+			command:  "*1\r\n$7\r\nUNKNOWN\r\n",
+			expected: "ERR unknown command 'UNKNOWN'",
+		},
 	}
 
-	// Read response
 	reader := bufio.NewReader(conn)
-	resp, err := ParseRESP(reader)
-	if err != nil {
-		t.Fatalf("Failed to read response: %v", err)
-	}
 
-	// Verify response
-	if resp.Type != SimpleString || resp.Str != "PONG" {
-		t.Errorf("Expected PONG response, got %v", resp)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Send command
+			_, err = conn.Write([]byte(tt.command))
+			if err != nil {
+				t.Fatalf("Failed to send command: %v", err)
+			}
+
+			// Read response
+			resp, err := ParseRESP(reader)
+			if err != nil {
+				t.Fatalf("Failed to read response: %v", err)
+			}
+
+			// For error responses, check the error message
+			if resp.Type == Error {
+				if resp.Str != tt.expected {
+					t.Errorf("Expected error %q, got %q", tt.expected, resp.Str)
+				}
+				return
+			}
+
+			// For normal responses, check the string value
+			if resp.Type != SimpleString || resp.Str != tt.expected {
+				t.Errorf("Expected %q, got %v", tt.expected, resp)
+			}
+		})
 	}
 }

@@ -48,19 +48,33 @@ func handleConnection(conn net.Conn) {
 			return
 		}
 
-		// Log the command
+		// Handle the command
 		if value.Type == Array && len(value.Array) > 0 {
 			command := strings.ToUpper(value.Array[0].Str)
-			args := make([]string, len(value.Array)-1)
-			for i := 1; i < len(value.Array); i++ {
-				args[i-1] = value.Array[i].Str
-			}
+			args := value.Array[1:]
 			log.Printf("Received command: %s, args: %v", command, args)
 
-			// For now, respond with PONG to everything
-			response := &RESPValue{
-				Type: SimpleString,
-				Str:  "PONG",
+			var response *RESPValue
+
+			switch command {
+			case "PING":
+				if len(args) == 0 {
+					response = &RESPValue{
+						Type: SimpleString,
+						Str:  "PONG",
+					}
+				} else {
+					// Echo back the first argument
+					response = &RESPValue{
+						Type: SimpleString,
+						Str:  args[0].Str,
+					}
+				}
+			default:
+				response = &RESPValue{
+					Type: Error,
+					Str:  fmt.Sprintf("ERR unknown command '%s'", command),
+				}
 			}
 
 			_, err = conn.Write(response.Serialize())
