@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"net"
 	"testing"
@@ -21,13 +22,22 @@ func TestServerStartup(t *testing.T) {
 	}
 	defer conn.Close()
 
-	// Send some test data
-	testData := "PING\r\n"
-	_, err = conn.Write([]byte(testData))
+	// Send PING command in RESP format
+	pingCmd := "*1\r\n$4\r\nPING\r\n"
+	_, err = conn.Write([]byte(pingCmd))
 	if err != nil {
-		t.Fatalf("Failed to send data to server: %v", err)
+		t.Fatalf("Failed to send PING command: %v", err)
 	}
 
-	// Give the server a moment to process the data
-	time.Sleep(100 * time.Millisecond)
+	// Read response
+	reader := bufio.NewReader(conn)
+	resp, err := ParseRESP(reader)
+	if err != nil {
+		t.Fatalf("Failed to read response: %v", err)
+	}
+
+	// Verify response
+	if resp.Type != SimpleString || resp.Str != "PONG" {
+		t.Errorf("Expected PONG response, got %v", resp)
+	}
 }

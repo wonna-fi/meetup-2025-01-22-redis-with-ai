@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"log"
 	"net"
+	"strings"
 )
 
 const (
@@ -36,14 +38,36 @@ func handleConnection(conn net.Conn) {
 
 	log.Printf("New connection from %s", conn.RemoteAddr())
 
-	buffer := make([]byte, 1024)
+	reader := bufio.NewReader(conn)
+
 	for {
-		n, err := conn.Read(buffer)
+		// Parse RESP message
+		value, err := ParseRESP(reader)
 		if err != nil {
-			log.Printf("Connection closed from %s: %v", conn.RemoteAddr(), err)
+			log.Printf("Error reading from connection: %v", err)
 			return
 		}
 
-		log.Printf("Received %d bytes from %s: %s", n, conn.RemoteAddr(), buffer[:n])
+		// Log the command
+		if value.Type == Array && len(value.Array) > 0 {
+			command := strings.ToUpper(value.Array[0].Str)
+			args := make([]string, len(value.Array)-1)
+			for i := 1; i < len(value.Array); i++ {
+				args[i-1] = value.Array[i].Str
+			}
+			log.Printf("Received command: %s, args: %v", command, args)
+
+			// For now, respond with PONG to everything
+			response := &RESPValue{
+				Type: SimpleString,
+				Str:  "PONG",
+			}
+
+			_, err = conn.Write(response.Serialize())
+			if err != nil {
+				log.Printf("Error writing response: %v", err)
+				return
+			}
+		}
 	}
 }
