@@ -13,7 +13,11 @@ const (
 	PROTOCOL     = "tcp"
 )
 
+var storage *Storage
+
 func main() {
+	storage = NewStorage()
+
 	listener, err := net.Listen(PROTOCOL, fmt.Sprintf(":%d", DEFAULT_PORT))
 	if err != nil {
 		log.Fatalf("Failed to start server: %v", err)
@@ -82,6 +86,59 @@ func handleConnection(conn net.Conn) {
 						Str:  args[0].Str,
 					}
 				}
+			case "SET":
+				if len(args) != 2 {
+					response = &RESPValue{
+						Type: Error,
+						Str:  "ERR wrong number of arguments for 'SET' command",
+					}
+				} else {
+					storage.Set(args[0].Str, args[1].Str)
+					response = &RESPValue{
+						Type: SimpleString,
+						Str:  "OK",
+					}
+				}
+			case "GET":
+				if len(args) != 1 {
+					response = &RESPValue{
+						Type: Error,
+						Str:  "ERR wrong number of arguments for 'GET' command",
+					}
+				} else {
+					if value, exists := storage.Get(args[0].Str); exists {
+						log.Printf("GET %s: found value %s", args[0].Str, value)
+						response = &RESPValue{
+							Type: BulkString,
+							Str:  value,
+						}
+					} else {
+						log.Printf("GET %s: key not found", args[0].Str)
+						response = &RESPValue{
+							Type:   BulkString,
+							IsNull: true,
+						}
+					}
+				}
+			case "DEL":
+				if len(args) != 1 {
+					response = &RESPValue{
+						Type: Error,
+						Str:  "ERR wrong number of arguments for 'DEL' command",
+					}
+				} else {
+					if deleted := storage.Del(args[0].Str); deleted {
+						response = &RESPValue{
+							Type: Integer,
+							Int:  1,
+						}
+					} else {
+						response = &RESPValue{
+							Type: Integer,
+							Int:  0,
+						}
+					}
+				}
 			default:
 				response = &RESPValue{
 					Type: Error,
@@ -89,6 +146,7 @@ func handleConnection(conn net.Conn) {
 				}
 			}
 
+			log.Printf("Sending response: %v", response)
 			_, err = conn.Write(response.Serialize())
 			if err != nil {
 				log.Printf("Error writing response: %v", err)

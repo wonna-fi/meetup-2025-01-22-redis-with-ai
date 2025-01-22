@@ -31,6 +31,24 @@ const (
 	Array
 )
 
+// String returns the string representation of RESPType
+func (t RESPType) String() string {
+	switch t {
+	case SimpleString:
+		return "SimpleString"
+	case Error:
+		return "Error"
+	case Integer:
+		return "Integer"
+	case BulkString:
+		return "BulkString"
+	case Array:
+		return "Array"
+	default:
+		return "Unknown"
+	}
+}
+
 // RESPValue represents a RESP protocol value
 type RESPValue struct {
 	Type   RESPType
@@ -38,6 +56,30 @@ type RESPValue struct {
 	Int    int64
 	Array  []RESPValue
 	IsNull bool
+}
+
+// String returns a human-readable representation of RESPValue
+func (v *RESPValue) String() string {
+	switch v.Type {
+	case SimpleString:
+		return fmt.Sprintf("SimpleString(%s)", v.Str)
+	case Error:
+		return fmt.Sprintf("Error(%s)", v.Str)
+	case Integer:
+		return fmt.Sprintf("Integer(%d)", v.Int)
+	case BulkString:
+		if v.IsNull {
+			return "BulkString(null)"
+		}
+		return fmt.Sprintf("BulkString(%s)", v.Str)
+	case Array:
+		if v.IsNull {
+			return "Array(null)"
+		}
+		return fmt.Sprintf("Array%v", v.Array)
+	default:
+		return "Unknown"
+	}
 }
 
 // ParseRESP parses a RESP message from a reader
