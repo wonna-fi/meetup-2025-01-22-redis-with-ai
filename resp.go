@@ -9,11 +9,11 @@ import (
 
 const (
 	// RESP type prefixes
-	ARRAY_PREFIX  = '*'
-	BULK_PREFIX   = '$'
-	STRING_PREFIX = '+'
-	ERROR_PREFIX  = '-'
-	INT_PREFIX    = ':'
+	ArrayPrefix  = '*'
+	BulkPrefix   = '$'
+	StringPrefix = '+'
+	ErrorPrefix  = '-'
+	IntPrefix    = ':'
 
 	// Protocol delimiters
 	CR = '\r'
@@ -49,15 +49,15 @@ func ParseRESP(reader *bufio.Reader) (*RESPValue, error) {
 	}
 
 	switch prefix {
-	case ARRAY_PREFIX:
+	case ArrayPrefix:
 		return parseArray(reader)
-	case BULK_PREFIX:
+	case BulkPrefix:
 		return parseBulkString(reader)
-	case STRING_PREFIX:
+	case StringPrefix:
 		return parseSimpleString(reader)
-	case ERROR_PREFIX:
+	case ErrorPrefix:
 		return parseError(reader)
-	case INT_PREFIX:
+	case IntPrefix:
 		return parseInteger(reader)
 	default:
 		return nil, fmt.Errorf("unknown RESP type prefix: %c", prefix)
