@@ -34,6 +34,16 @@ func main() {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// TODO: Implement RESP protocol handling
 	log.Printf("New connection from %s", conn.RemoteAddr())
+
+	buffer := make([]byte, 1024)
+	for {
+		n, err := conn.Read(buffer)
+		if err != nil {
+			log.Printf("Connection closed from %s: %v", conn.RemoteAddr(), err)
+			return
+		}
+
+		log.Printf("Received %d bytes from %s: %s", n, conn.RemoteAddr(), buffer[:n])
+	}
 }
