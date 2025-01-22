@@ -70,6 +70,18 @@ func handleConnection(conn net.Conn) {
 						Str:  args[0].Str,
 					}
 				}
+			case "ECHO":
+				if len(args) != 1 {
+					response = &RESPValue{
+						Type: Error,
+						Str:  "ERR wrong number of arguments for 'ECHO' command",
+					}
+				} else {
+					response = &RESPValue{
+						Type: BulkString,
+						Str:  args[0].Str,
+					}
+				}
 			default:
 				response = &RESPValue{
 					Type: Error,

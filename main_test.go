@@ -23,24 +23,46 @@ func TestServerStartup(t *testing.T) {
 	defer conn.Close()
 
 	tests := []struct {
-		name     string
-		command  string
-		expected string
+		name         string
+		command      string
+		expected     string
+		expectedType RESPType
 	}{
 		{
-			name:     "PING without argument",
-			command:  "*1\r\n$4\r\nPING\r\n",
-			expected: "PONG",
+			name:         "PING without argument",
+			command:      "*1\r\n$4\r\nPING\r\n",
+			expected:     "PONG",
+			expectedType: SimpleString,
 		},
 		{
-			name:     "PING with argument",
-			command:  "*2\r\n$4\r\nPING\r\n$5\r\nhello\r\n",
-			expected: "hello",
+			name:         "PING with argument",
+			command:      "*2\r\n$4\r\nPING\r\n$5\r\nhello\r\n",
+			expected:     "hello",
+			expectedType: SimpleString,
 		},
 		{
-			name:     "Unknown command",
-			command:  "*1\r\n$7\r\nUNKNOWN\r\n",
-			expected: "ERR unknown command 'UNKNOWN'",
+			name:         "ECHO without argument",
+			command:      "*1\r\n$4\r\nECHO\r\n",
+			expected:     "ERR wrong number of arguments for 'ECHO' command",
+			expectedType: Error,
+		},
+		{
+			name:         "ECHO with argument",
+			command:      "*2\r\n$4\r\nECHO\r\n$5\r\nhello\r\n",
+			expected:     "hello",
+			expectedType: BulkString,
+		},
+		{
+			name:         "ECHO with too many arguments",
+			command:      "*3\r\n$4\r\nECHO\r\n$5\r\nhello\r\n$5\r\nworld\r\n",
+			expected:     "ERR wrong number of arguments for 'ECHO' command",
+			expectedType: Error,
+		},
+		{
+			name:         "Unknown command",
+			command:      "*1\r\n$7\r\nUNKNOWN\r\n",
+			expected:     "ERR unknown command 'UNKNOWN'",
+			expectedType: Error,
 		},
 	}
 
@@ -60,17 +82,13 @@ func TestServerStartup(t *testing.T) {
 				t.Fatalf("Failed to read response: %v", err)
 			}
 
-			// For error responses, check the error message
-			if resp.Type == Error {
-				if resp.Str != tt.expected {
-					t.Errorf("Expected error %q, got %q", tt.expected, resp.Str)
-				}
-				return
+			// Verify response type and content
+			if resp.Type != tt.expectedType {
+				t.Errorf("Expected response type %v, got %v", tt.expectedType, resp.Type)
 			}
 
-			// For normal responses, check the string value
-			if resp.Type != SimpleString || resp.Str != tt.expected {
-				t.Errorf("Expected %q, got %v", tt.expected, resp)
+			if resp.Str != tt.expected {
+				t.Errorf("Expected %q, got %q", tt.expected, resp.Str)
 			}
 		})
 	}
