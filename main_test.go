@@ -64,8 +64,14 @@ func TestServerStartup(t *testing.T) {
 			expectedType: Error,
 		},
 		{
-			name:         "SET key-value",
-			command:      "*3\r\n$3\r\nSET\r\n$3\r\nkey\r\n$5\r\nvalue\r\n",
+			name:         "SET key1",
+			command:      "*3\r\n$3\r\nSET\r\n$4\r\nkey1\r\n$6\r\nvalue1\r\n",
+			expected:     "OK",
+			expectedType: SimpleString,
+		},
+		{
+			name:         "SET key2",
+			command:      "*3\r\n$3\r\nSET\r\n$4\r\nkey2\r\n$6\r\nvalue2\r\n",
 			expected:     "OK",
 			expectedType: SimpleString,
 		},
@@ -78,25 +84,31 @@ func TestServerStartup(t *testing.T) {
 		},
 		{
 			name:         "GET existing key",
-			command:      "*2\r\n$3\r\nGET\r\n$3\r\nkey\r\n",
-			expected:     "value",
+			command:      "*2\r\n$3\r\nGET\r\n$4\r\nkey1\r\n",
+			expected:     "value1",
 			expectedType: BulkString,
 		},
 		{
-			name:         "DEL existing key",
-			command:      "*2\r\n$3\r\nDEL\r\n$3\r\nkey\r\n",
-			expected:     "1",
+			name:         "DEL without arguments",
+			command:      "*1\r\n$3\r\nDEL\r\n",
+			expected:     "ERR wrong number of arguments for 'DEL' command",
+			expectedType: Error,
+		},
+		{
+			name:         "DEL multiple keys (2 existing, 1 non-existent)",
+			command:      "*4\r\n$3\r\nDEL\r\n$4\r\nkey1\r\n$4\r\nkey2\r\n$8\r\nnotfound\r\n",
+			expected:     "2",
 			expectedType: Integer,
 		},
 		{
-			name:         "DEL non-existent key",
-			command:      "*2\r\n$3\r\nDEL\r\n$3\r\nkey\r\n",
+			name:         "DEL non-existent keys",
+			command:      "*3\r\n$3\r\nDEL\r\n$4\r\nkey1\r\n$4\r\nkey2\r\n",
 			expected:     "0",
 			expectedType: Integer,
 		},
 		{
 			name:         "GET after DEL",
-			command:      "*2\r\n$3\r\nGET\r\n$3\r\nkey\r\n",
+			command:      "*2\r\n$3\r\nGET\r\n$4\r\nkey1\r\n",
 			expected:     "",
 			expectedType: BulkString,
 			// Note: IsNull will be true for this case
@@ -147,6 +159,8 @@ func TestServerStartup(t *testing.T) {
 				expected := int64(0)
 				if tt.expected == "1" {
 					expected = 1
+				} else if tt.expected == "2" {
+					expected = 2
 				}
 				if resp.Int != expected {
 					t.Errorf("Expected %d, got %d", expected, resp.Int)

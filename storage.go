@@ -32,15 +32,19 @@ func (s *Storage) Get(key string) (string, bool) {
 	return value, exists
 }
 
-// Del removes a key-value pair
-func (s *Storage) Del(key string) bool {
+// Del removes one or more key-value pairs and returns the number of keys that were deleted
+func (s *Storage) Del(keys ...string) int64 {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	_, exists := s.data[key]
-	if exists {
-		delete(s.data, key)
+
+	var deleted int64
+	for _, key := range keys {
+		if _, exists := s.data[key]; exists {
+			delete(s.data, key)
+			deleted++
+		}
 	}
-	return exists
+	return deleted
 }
 
 // Len returns the number of stored key-value pairs

@@ -25,23 +25,44 @@ func TestStorage(t *testing.T) {
 		t.Error("Expected nonexistent key to not exist")
 	}
 
-	// Test Del
-	existed := s.Del("key1")
-	if !existed {
-		t.Error("Expected key1 to exist before deletion")
+	// Test Del single key
+	deleted := s.Del("key1")
+	if deleted != 1 {
+		t.Error("Expected 1 key to be deleted")
 	}
 	_, exists = s.Get("key1")
 	if exists {
 		t.Error("Expected key1 to be deleted")
 	}
 
-	// Test Del non-existent key
-	existed = s.Del("nonexistent")
-	if existed {
-		t.Error("Expected Del of nonexistent key to return false")
+	// Test Del multiple keys
+	s.Set("key1", "value1")
+	s.Set("key2", "value2")
+	s.Set("key3", "value3")
+
+	// Delete two existing keys and one non-existent key
+	deleted = s.Del("key1", "key2", "nonexistent")
+	if deleted != 2 {
+		t.Errorf("Expected 2 keys to be deleted, got %d", deleted)
+	}
+
+	// Verify only key3 remains
+	if s.Len() != 1 {
+		t.Errorf("Expected length 1, got %d", s.Len())
+	}
+	_, exists = s.Get("key3")
+	if !exists {
+		t.Error("Expected key3 to still exist")
+	}
+
+	// Test Del non-existent keys
+	deleted = s.Del("nonexistent1", "nonexistent2")
+	if deleted != 0 {
+		t.Errorf("Expected 0 keys to be deleted, got %d", deleted)
 	}
 
 	// Test Len
+	s.Del("key3")
 	if s.Len() != 0 {
 		t.Errorf("Expected length 0, got %d", s.Len())
 	}
@@ -90,14 +111,15 @@ func TestStorageConcurrent(t *testing.T) {
 	}
 	wg.Wait()
 
-	// Test concurrent deletes
+	// Test concurrent multi-key deletes
 	wg = sync.WaitGroup{}
-	for i := 0; i < 100; i++ {
+	for i := 0; i < 50; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			key := fmt.Sprintf("key%d", i)
-			s.Del(key)
+			key1 := fmt.Sprintf("key%d", i*2)
+			key2 := fmt.Sprintf("key%d", i*2+1)
+			s.Del(key1, key2)
 		}(i)
 	}
 	wg.Wait()

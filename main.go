@@ -121,22 +121,23 @@ func handleConnection(conn net.Conn) {
 					}
 				}
 			case "DEL":
-				if len(args) != 1 {
+				if len(args) < 1 {
 					response = &RESPValue{
 						Type: Error,
 						Str:  "ERR wrong number of arguments for 'DEL' command",
 					}
 				} else {
-					if deleted := storage.Del(args[0].Str); deleted {
-						response = &RESPValue{
-							Type: Integer,
-							Int:  1,
-						}
-					} else {
-						response = &RESPValue{
-							Type: Integer,
-							Int:  0,
-						}
+					// Extract keys from arguments
+					keys := make([]string, len(args))
+					for i, arg := range args {
+						keys[i] = arg.Str
+					}
+
+					// Delete keys and get count of deleted keys
+					deleted := storage.Del(keys...)
+					response = &RESPValue{
+						Type: Integer,
+						Int:  deleted,
 					}
 				}
 			default:
